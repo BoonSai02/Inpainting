@@ -13,6 +13,7 @@
 # limitations under the License.
 import os
 import inspect
+from src.constants import WEIGHTS_DIR
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import numpy as np
@@ -58,8 +59,9 @@ from diffusers.pipelines.pipeline_utils import DiffusionPipeline, StableDiffusio
 from diffusers.pipelines.stable_diffusion_xl.pipeline_output import StableDiffusionXLPipelineOutput
 from dataclasses import dataclass
 
-from ..models import CLIPImageEncoder, PostfuseModule
-from ..utils import attention_guided_fusion
+from .clip_image_encoder import CLIPImageEncoder
+from .postfuse_module import PostfuseModule
+from src.utils import attention_guided_fusion
 import gc
 import torch.nn.functional as F
 
@@ -490,11 +492,8 @@ class ObjectClearPipeline(
         filename = "model.safetensors"
 
         # Try to find local weights first
-        # Assuming src/core/pipelines/pipeline_objectclear.py -> ../../../weights
-        # But we can also pass the weights directory via kwargs or config if needed.
-        # For now, let's look in the standard location relative to this file.
-        
-        local_weights_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), "weights", "ObjectClear", "postfuse_module", filename)
+        # Use src.constants.WEIGHTS_DIR
+        local_weights_path = os.path.join(WEIGHTS_DIR, "ObjectClear", "postfuse_module", filename)
         
         if os.path.exists(local_weights_path):
             safetensor_path = local_weights_path
@@ -2052,7 +2051,7 @@ class ObjectClearPipeline(
                 gen_pil = generated_pils[i]
                 attn_pil = attn_pils[i]
 
-                fused_np = attention_guided_fusion(np.array(ori_pil), np.array(gen_pil), np.array(attn_pil))
+                fused_np = attention_guided_fusion.attention_guided_fusion(np.array(ori_pil), np.array(gen_pil), np.array(attn_pil))
                 fused_pil = PIL.Image.fromarray(fused_np.astype(np.uint8)).resize(ori_pil.size)
 
                 fused_images.append(fused_pil)
