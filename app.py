@@ -14,7 +14,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from src.pipeline.pipeline import InpaintingPipeline
 from src.exceptions import CustomException
 from src.logger import get_logger
-from src.utils.validators import validate_coordinates
+from src.utils.input_validations import validate_coordinates, validate_image_file
 
 logger = get_logger("app")
 
@@ -28,10 +28,6 @@ async def lifespan(app: FastAPI):
         pipeline_instance = InpaintingPipeline()
     except Exception as e:
         logger.error(f"Failed to initialize pipeline: {e}")
-        # We might want to exit if models fail to load, or just log it.
-        # Typically we want to know, but let's allow app to start and fail on request if needed.
-        # But for MLOps, usually we want to fail fast.
-        # raise e 
         pass 
     yield
     # Clean up if needed
@@ -52,6 +48,9 @@ async def remove_object(
     try:
         # 1. Parse Inputs
         points = validate_coordinates(coords_json)
+        
+        # 2. Validate Image
+        await validate_image_file(file)
         
         # Read image
         image_data = await file.read()
