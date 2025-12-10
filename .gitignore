@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# IPython
+.ipynb_checkpoints
+
+# Environments
+venv/
+env/
+.env
+.venv
+
+# VS Code
+.vscode/
+
+# Project Specific
+src/weights/
+results/
+inputs/
+*.log

@@ -1,0 +1,14 @@
+accelerate
+torch
+torchvision
+numpy
+opencv-python
+pillow
+transformers
+scipy
+diffusers
+fastapi
+uvicorn
+python-multipart
+huggingface-hub
+git+https://github.com/facebookresearch/segment-anything.git
