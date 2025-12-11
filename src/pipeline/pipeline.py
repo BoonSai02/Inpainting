@@ -67,3 +67,23 @@ class InpaintingPipeline:
         except Exception as e:
             logger.error(f"Unexpected error in pipeline: {e}")
             raise CustomException("Pipeline processing failed", str(e))
+
+    def cleanup(self):
+        """
+        Explicitly release resources and clear GPU cache.
+        """
+        logger.info("Cleaning up pipeline resources...")
+        if self.sam:
+            del self.sam
+            self.sam = None
+            logger.info("SAM component released.")
+            
+        if self.object_clear:
+            del self.object_clear
+            self.object_clear = None
+            logger.info("ObjectClear component released.")
+            
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+            torch.cuda.ipc_collect()
+            logger.info("GPU cache cleared.")

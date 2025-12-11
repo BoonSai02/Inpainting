@@ -24,5 +24,16 @@ USE_GPU = True
 
 # Validation Constants
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp'}
-MAX_FILE_SIZE_MB = 10
+MAX_FILE_SIZE_MB = 20
 MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
+
+# Response Codes
+class ResponseCode:
+    SUCCESS_OK = "200"
+    ERR_INVALID_INPUT = "400"
+    ERR_PROCESSING_FAILED = "500"
+    ERR_MODEL_NOT_READY = "ERR_503"
+    ERR_UNAUTHORIZED = "ERR_401"
+
+# Resource Management
+MODEL_TTL_SECONDS = 300
