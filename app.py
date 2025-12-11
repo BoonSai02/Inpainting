@@ -83,6 +83,7 @@ async def lifespan(app: FastAPI):
     
     # Initialize State
     app.state.last_activity = time.time()
+    app.state.gpu_lock = asyncio.Lock()
     
     try:
         app.state.pipeline = InpaintingPipeline()
@@ -231,8 +232,13 @@ async def remove_object(
 
         # 3. Process via Pipeline (Blocking / GPU bound - Run in threadpool)
         # We use run_in_threadpool to ensure the main event loop is not blocked
+        # We use gpu_lock to ensure only one request uses the GPU at a time (Race Condition Handling)
         try:
-            result_image = await run_in_threadpool(pipeline.process_request, image, points)
+            logger.info("Acquiring GPU lock...")
+            async with request.app.state.gpu_lock:
+                 logger.info("GPU lock acquired. Processing request...")
+                 result_image = await run_in_threadpool(pipeline.process_request, image, points)
+            logger.info("GPU lock released.")
         except CustomException as ce:
             logger.error(f"Custom Exception in pipeline: {ce}")
             return ResponseBuilder.error(
