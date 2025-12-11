@@ -19,10 +19,25 @@ class InpaintingPipeline:
         else:
             self.device_str = 'cpu'
             
-        logger.info(f"Initializing pipeline with USE_GPU={USE_GPU}. Target device: {self.device_str}")
+        logger.info(f"Initializing pipeline object (Lazy Loading Enabled). USE_GPU={USE_GPU}. Target device: {self.device_str}")
         
-        self.sam = SAMComponent(device=self.device_str)
-        self.object_clear = ObjectClearComponent(device=self.device_str)
+        # Lazy Loading: Initialize to None
+        self.sam = None
+        self.object_clear = None
+        
+    def load_models(self):
+        """
+        Check if models are loaded, if not, load them.
+        """
+        if self.sam is None:
+            logger.info("Lazy Loading: Initializing SAM Component...")
+            self.sam = SAMComponent(device=self.device_str)
+            logger.info("Lazy Loading: SAM Component Initialized.")
+            
+        if self.object_clear is None:
+            logger.info("Lazy Loading: Initializing ObjectClear Component...")
+            self.object_clear = ObjectClearComponent(device=self.device_str)
+            logger.info("Lazy Loading: ObjectClear Component Initialized.")
         
     def process_request(self, image: Image.Image, points: list[list[int]]) -> Image.Image:
         """
@@ -31,6 +46,9 @@ class InpaintingPipeline:
         logger.info("Starting processing request")
         
         try:
+            # Ensure models are loaded
+            self.load_models()
+        
             # 1. SAM Inference
             image_np = np.array(image)
             logger.info("Generating mask with SAM...")

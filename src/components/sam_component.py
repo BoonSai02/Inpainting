@@ -49,6 +49,12 @@ class SAMComponent:
             np.ndarray: (H, W) binary mask (0 or 255) where 255 is the object.
         """
         try:
+            # Manual Offloading Logic: Move to GPU *BEFORE* set_image, 
+            # because set_image runs the encoder and stores features on the device.
+            if not USE_GPU and 'cuda' in str(self.device):
+                self.model.to(self.device)
+                self.predictor.model = self.model 
+                
             self.predictor.set_image(image_np)
             
             points_np = np.array(points)
@@ -58,11 +64,6 @@ class SAMComponent:
                 labels_np = np.array(labels)
                 
             # Predict masks
-            
-            # Manual Offloading Logic
-            if not USE_GPU and 'cuda' in str(self.device):
-                self.model.to(self.device)
-                self.predictor.model = self.model # Ensure predictor uses the moved model
             
             masks, scores, logits = self.predictor.predict(
                 point_coords=points_np,
