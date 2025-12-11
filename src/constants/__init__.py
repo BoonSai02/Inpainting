@@ -21,3 +21,8 @@ GUIDANCE_SCALE = 2.5
 
 # Device Configuration
 USE_GPU = True
+
+# Validation Constants
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp'}
+MAX_FILE_SIZE_MB = 10
+MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
