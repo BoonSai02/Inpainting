@@ -2,7 +2,7 @@ import torch
 from PIL import Image
 from src.components.object_clear_pipeline import ObjectClearPipeline
 from src.utils.image_utils import resize_by_short_side
-from src.constants import OBJECT_CLEAR_REPO_ID, INFERENCE_STEPS, GUIDANCE_SCALE, DEFAULT_IMAGE_SIZE
+from src.constants import OBJECT_CLEAR_REPO_ID, INFERENCE_STEPS, GUIDANCE_SCALE, DEFAULT_IMAGE_SIZE, USE_GPU
 from src.logger import get_logger
 from src.exceptions import CustomException
 
@@ -20,8 +20,18 @@ class ObjectClearComponent:
                 apply_attention_guided_fusion=True,
                 variant="fp16" if 'cuda' in str(device) else None,
             )
-            self.pipe.to(device)
-            logger.info("ObjectClear model loaded successfully.")
+            
+            if USE_GPU:
+                # Force all to GPU
+                self.pipe.to(device)
+            else:
+                # GPU/CPU Parallel (Model Offloading)
+                if 'cuda' in str(device):
+                     self.pipe.enable_model_cpu_offload()
+                else:
+                     self.pipe.to(device)
+
+            logger.info(f"ObjectClear model loaded successfully. Strategy: {'Full GPU' if USE_GPU else 'CPU Offload'}")
         except Exception as e:
             logger.error(f"Failed to load ObjectClear model: {str(e)}")
             raise CustomException("Failed to load ObjectClear model", str(e))

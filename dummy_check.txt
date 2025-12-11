@@ -1,0 +1,13 @@
+import requests
+
+print("Simulating request...")
+# We can't easily mock a full file upload here without files, but we can verify the loading logic 
+# by checking if a request *starts* the loading process even if it fails later due to bad input.
+# Or better, we trust the integration test. 
+# Actually, let's just create a dummy script to hit the endpoint if possible, or just rely on the fact 
+# that the code path is clear.
+# Given I don't have sample images handy to curl, I will rely on the unit test logic logic.
+# But wait, I can just check the logs if I could send a request.
+# Let's try sending a malformed request, it should fail validation but BEFORE that?
+# Actually app.py calls pipeline_instance.process_request AFTER validation.
+# So I need a valid request to trigger loading.

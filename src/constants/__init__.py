@@ -19,7 +19,5 @@ DEFAULT_IMAGE_SIZE = 512
 INFERENCE_STEPS = 20
 GUIDANCE_SCALE = 2.5
 
-# Validation
-ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png', 'webp', 'bmp', 'tiff'}
-MAX_FILE_SIZE_MB = 20
-MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
+# Device Configuration
+USE_GPU = True
