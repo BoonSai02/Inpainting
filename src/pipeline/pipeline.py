@@ -6,15 +6,23 @@ from src.components.object_clear_component import ObjectClearComponent
 from src.logger import get_logger
 from src.exceptions import CustomException
 
+from src.constants import USE_GPU
+
 logger = get_logger(__name__)
 
 class InpaintingPipeline:
     def __init__(self):
-        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        logger.info(f"Initializing pipeline on {device}")
+        # We always prefer CUDA if available for the device string
+        # USE_GPU flag will control the *memory strategy* (Full Load vs Offload) inside components
+        if torch.cuda.is_available():
+            self.device_str = 'cuda'
+        else:
+            self.device_str = 'cpu'
+            
+        logger.info(f"Initializing pipeline with USE_GPU={USE_GPU}. Target device: {self.device_str}")
         
-        self.sam = SAMComponent(device=str(device))
-        self.object_clear = ObjectClearComponent(device=str(device))
+        self.sam = SAMComponent(device=self.device_str)
+        self.object_clear = ObjectClearComponent(device=self.device_str)
         
     def process_request(self, image: Image.Image, points: list[list[int]]) -> Image.Image:
         """

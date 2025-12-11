@@ -18,3 +18,6 @@ OBJECT_CLEAR_WEIGHTS_DIR = os.path.join(WEIGHTS_DIR, "ObjectClear")
 DEFAULT_IMAGE_SIZE = 512
 INFERENCE_STEPS = 20
 GUIDANCE_SCALE = 2.5
+
+# Device Configuration
+USE_GPU = True
