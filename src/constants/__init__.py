@@ -37,3 +37,11 @@ class ResponseCode:
 
 # Resource Management
 MODEL_TTL_SECONDS = 300
+
+
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
+
+ALPHA_JWT_SECRET_KEY = os.getenv("SUPABASE_JWT_SECRET")

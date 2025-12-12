@@ -4,6 +4,7 @@
 import io
 import os
 import sys
+import base64
 import time
 import asyncio
 import uvicorn
@@ -22,6 +23,8 @@ from src.exceptions import CustomException
 from src.logger import get_logger
 from src.utils.input_validations import validate_coordinates, validate_image_file
 from src.utils.response_builder import ResponseBuilder
+from src.utils.auth import verify_token
+from fastapi import Depends
 from src.constants import ResponseCode, MODEL_TTL_SECONDS
 
 # -----------------------------------------------------------------------------
@@ -148,8 +151,18 @@ async def global_exception_handler(request: Request, exc: Exception):
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
     logger.error(f"HTTP Exception: {exc.detail}")
+    
+    # Determine application error code based on HTTP status
+    app_code = ResponseCode.ERR_PROCESSING_FAILED # Default
+    if exc.status_code == 400:
+        app_code = ResponseCode.ERR_INVALID_INPUT
+    elif exc.status_code == 401:
+        app_code = ResponseCode.ERR_UNAUTHORIZED
+    elif exc.status_code == 503:
+        app_code = ResponseCode.ERR_MODEL_NOT_READY
+        
     return ResponseBuilder.error(
-        code=ResponseCode.ERR_PROCESSING_FAILED,
+        code=app_code,
         message=exc.detail,
         status_code=exc.status_code
     )
@@ -176,7 +189,8 @@ async def health_check():
 async def remove_object(
     request: Request,
     file: UploadFile = File(...),
-    coords_json: str = Form(...)
+    coords_json: str = Form(...),
+    token: str = Depends(verify_token) 
 ):
     """
     Endpoint to remove objects from an image based on provided coordinates.
@@ -199,6 +213,13 @@ async def remove_object(
         # 1. Parse Inputs (CPU bound, fast)
         try:
             points = validate_coordinates(coords_json)
+        except CustomException as ce:
+             return ResponseBuilder.error(
+                code=ResponseCode.ERR_INVALID_INPUT,
+                message=ce.message, # Use clean message
+                details=None,
+                status_code=400
+            )
         except ValueError as ve:
              return ResponseBuilder.error(
                 code=ResponseCode.ERR_INVALID_INPUT,
@@ -210,6 +231,13 @@ async def remove_object(
         # 2. Validate Image (I/O bound)
         try:
             await validate_image_file(file)
+        except CustomException as ce:
+             return ResponseBuilder.error(
+                code=ResponseCode.ERR_INVALID_INPUT,
+                message=ce.message, # Use clean message
+                details=None,
+                status_code=400
+            )
         except ValueError as ve:
              return ResponseBuilder.error(
                 code=ResponseCode.ERR_INVALID_INPUT,
@@ -227,6 +255,7 @@ async def remove_object(
             return ResponseBuilder.error(
                 code=ResponseCode.ERR_INVALID_INPUT,
                 message="Invalid image content",
+                details=None,
                 status_code=400
             )
 
@@ -251,7 +280,17 @@ async def remove_object(
         # 4. Return Response
         img_byte_arr = io.BytesIO()
         result_image.save(img_byte_arr, format='PNG')
-        return Response(content=img_byte_arr.getvalue(), media_type="image/png")
+        img_bytes = img_byte_arr.getvalue()
+        base64_str = base64.b64encode(img_bytes).decode('utf-8')
+        
+        return ResponseBuilder.success(
+            code=ResponseCode.SUCCESS_OK,
+            message="Object removed successfully",
+            data={
+                "image_base64": base64_str,
+                "media_type": "image/png"
+            }
+        )
 
     except Exception as e:
         logger.error(f"Unhandled Exception in endpoint: {e}")
@@ -265,4 +304,4 @@ async def remove_object(
 # Main Execution
 # -----------------------------------------------------------------------------
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8003)
+    uvicorn.run(app, host="0.0.0.0", port=8002)
