@@ -6,15 +6,38 @@ from src.components.object_clear_component import ObjectClearComponent
 from src.logger import get_logger
 from src.exceptions import CustomException
 
+from src.constants import USE_GPU
+
 logger = get_logger(__name__)
 
 class InpaintingPipeline:
     def __init__(self):
-        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        logger.info(f"Initializing pipeline on {device}")
+        # We always prefer CUDA if available for the device string
+        # USE_GPU flag will control the *memory strategy* (Full Load vs Offload) inside components
+        if torch.cuda.is_available():
+            self.device_str = 'cuda'
+        else:
+            self.device_str = 'cpu'
+            
+        logger.info(f"Initializing pipeline object (Lazy Loading Enabled). USE_GPU={USE_GPU}. Target device: {self.device_str}")
         
-        self.sam = SAMComponent(device=str(device))
-        self.object_clear = ObjectClearComponent(device=str(device))
+        # Lazy Loading: Initialize to None
+        self.sam = None
+        self.object_clear = None
+        
+    def load_models(self):
+        """
+        Check if models are loaded, if not, load them.
+        """
+        if self.sam is None:
+            logger.info("Lazy Loading: Initializing SAM Component...")
+            self.sam = SAMComponent(device=self.device_str)
+            logger.info("Lazy Loading: SAM Component Initialized.")
+            
+        if self.object_clear is None:
+            logger.info("Lazy Loading: Initializing ObjectClear Component...")
+            self.object_clear = ObjectClearComponent(device=self.device_str)
+            logger.info("Lazy Loading: ObjectClear Component Initialized.")
         
     def process_request(self, image: Image.Image, points: list[list[int]]) -> Image.Image:
         """
@@ -23,6 +46,9 @@ class InpaintingPipeline:
         logger.info("Starting processing request")
         
         try:
+            # Ensure models are loaded
+            self.load_models()
+        
             # 1. SAM Inference
             image_np = np.array(image)
             logger.info("Generating mask with SAM...")
@@ -41,3 +67,23 @@ class InpaintingPipeline:
         except Exception as e:
             logger.error(f"Unexpected error in pipeline: {e}")
             raise CustomException("Pipeline processing failed", str(e))
+
+    def cleanup(self):
+        """
+        Explicitly release resources and clear GPU cache.
+        """
+        logger.info("Cleaning up pipeline resources...")
+        if self.sam:
+            del self.sam
+            self.sam = None
+            logger.info("SAM component released.")
+            
+        if self.object_clear:
+            del self.object_clear
+            self.object_clear = None
+            logger.info("ObjectClear component released.")
+            
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+            torch.cuda.ipc_collect()
+            logger.info("GPU cache cleared.")

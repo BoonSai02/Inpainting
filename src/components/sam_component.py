@@ -2,7 +2,7 @@ import torch
 import numpy as np
 from segment_anything import sam_model_registry, SamPredictor
 import os
-from src.constants import SAM_CHECKPOINT_PATH, SAM_MODEL_TYPE
+from src.constants import SAM_CHECKPOINT_PATH, SAM_MODEL_TYPE, USE_GPU
 from src.logger import get_logger
 from src.exceptions import CustomException
 
@@ -20,9 +20,17 @@ class SAMComponent:
         logger.info(f"Loading SAM model from {SAM_CHECKPOINT_PATH} to {device}...")
         try:
             self.model = sam_model_registry[self.model_type](checkpoint=SAM_CHECKPOINT_PATH)
-            self.model.to(device=self.device)
+            
+            if USE_GPU:
+                self.model.to(device=self.device)
+            else:
+                # If offloading, keep on CPU initially, move to GPU only during inference
+                # If device is cpu, it just stays on cpu
+                if 'cuda' not in str(device):
+                     self.model.to(device=self.device)
+                
             self.predictor = SamPredictor(self.model)
-            logger.info("SAM model loaded successfully.")
+            logger.info(f"SAM model loaded successfully. Strategy: {'Full GPU' if USE_GPU else 'manual offload'}")
         except Exception as e:
             logger.error(f"Failed to load SAM model: {str(e)}")
             raise CustomException("Failed to load SAM model", str(e))
@@ -41,6 +49,12 @@ class SAMComponent:
             np.ndarray: (H, W) binary mask (0 or 255) where 255 is the object.
         """
         try:
+            # Manual Offloading Logic: Move to GPU *BEFORE* set_image, 
+            # because set_image runs the encoder and stores features on the device.
+            if not USE_GPU and 'cuda' in str(self.device):
+                self.model.to(self.device)
+                self.predictor.model = self.model 
+                
             self.predictor.set_image(image_np)
             
             points_np = np.array(points)
@@ -50,11 +64,16 @@ class SAMComponent:
                 labels_np = np.array(labels)
                 
             # Predict masks
+            
             masks, scores, logits = self.predictor.predict(
                 point_coords=points_np,
                 point_labels=labels_np,
                 multimask_output=True 
             )
+            
+            if not USE_GPU and 'cuda' in str(self.device):
+                self.model.to('cpu')
+                torch.cuda.empty_cache()
             
             # Select the mask with the highest score
             best_idx = np.argmax(scores)

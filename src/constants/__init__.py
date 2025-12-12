@@ -18,3 +18,30 @@ OBJECT_CLEAR_WEIGHTS_DIR = os.path.join(WEIGHTS_DIR, "ObjectClear")
 DEFAULT_IMAGE_SIZE = 512
 INFERENCE_STEPS = 20
 GUIDANCE_SCALE = 2.5
+
+# Device Configuration
+USE_GPU = True
+
+# Validation Constants
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp'}
+MAX_FILE_SIZE_MB = 20
+MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
+
+# Response Codes
+class ResponseCode:
+    SUCCESS_OK = "200"
+    ERR_INVALID_INPUT = "400"
+    ERR_PROCESSING_FAILED = "500"
+    ERR_MODEL_NOT_READY = "503"
+    ERR_UNAUTHORIZED = "401"
+
+# Resource Management
+MODEL_TTL_SECONDS = 300
+
+
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
+
+ALPHA_JWT_SECRET_KEY = os.getenv("SUPABASE_JWT_SECRET")
